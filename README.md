@@ -168,176 +168,6 @@ Estabelecer decisões arquiteturais e normas táticas de DDD para alinhar lingua
 * **Outbox:** padrão para publicar eventos de forma confiável com a transação.
 * **ACL:** camada que protege o modelo de domínios externos/legados.
 
-# Guia de Normas DDD (ADR/README do Repositório)
-
-**Status:** Ativo · **Versão:** 1.0 · **Data:** 2025‑09‑01 · **Proprietário:** Arquitetura/Engenharia
-
-**Escopo:** Aplica‑se a todos os Bounded Contexts e serviços deste monorepo/multi‑repo.
-
-**Diretriz permanente do projeto:** *Value Objects não usam herança; são comportamentais e conceituais, com reuso por composição/contratos.*
-
----
-
-## 1) Propósito & Escopo
-
-Estabelecer decisões arquiteturais e normas táticas de DDD para alinhar linguagem ubíqua, fronteiras de consistência, estilo de código, testes e integração. Esta ADR funciona como README vivo do repositório.
-
----
-
-## 2) Sumário (navegação rápida)
-
-1. Propósito & Escopo
-2. Sumário
-3. Vocabulário & Convenções
-4. Normas Gerais de Domínio
-5. Identidade, Tempo e Valores Monetários
-6. Eventos (Domínio vs Integração)
-7. Validações, Specifications & Policies
-8. Serviços & Fábricas (Domain/Application)
-9. Repositórios, Leitura e Mapeamentos
-10. Fronteiras, Bounded Contexts & ACL
-11. Consistência, Sagas/Process Managers
-12. Organização & Modularidade
-13. Observabilidade, Segurança & Auditoria
-14. Qualidade & Testes (padrões de teste)
-15. Versionamento & Evolução (schema/events)
-16. Checklists por Camada
-
-    * 16.1 Domain
-    * 16.2 Application
-    * 16.3 Infrastructure
-17. Glossário do Domínio
-
-> As seções 16.1–16.3 (checklists) serão mantidas como listas prescritivas de verificação contínua.
-
----
-
-## 3) Vocabulário & Convenções
-
-* **Linguagem Ubíqua:** nomes de classes/métodos/arquivos em inglês, refletindo termos do negócio; documentos em PT‑BR.
-* **Past tense em eventos de domínio** (ex.: `BookLoaned`).
-* **Semântica > Tecnologia:** o domínio não conhece framework/ORM.
-* **Nomenclatura:** IDs e VOs com sufixo `Id`, `VO`, `Code`, etc.; repositórios por agregado; casos de uso no imperativo.
-
----
-
-## 4) Normas Gerais de Domínio
-
-* **VOs imutáveis, sem herança**; construção via fábricas estáticas; igualdade por valor; reuso por composição/utilitários.
-* **Entidades** expõem comportamentos que preservam invariantes; sem setters genéricos.
-* **Agregado = fronteira transacional**: invariantes fortes dentro; transações não atravessam agregados.
-* **Apenas Aggregate Roots possuem repositório**; entidades internas só existem por meio do agregado.
-* **Domínio é persistência‑agnóstica**: sem anotações/ORM no core.
-
----
-
-## 5) Identidade, Tempo e Valores Monetários
-
-* **Identidade como VO** (`BookId`, `UserId`), não strings cruas.
-* **Geração de IDs** via porta `IdGenerator` (injetável na Application/Infra).
-* **Relógio do domínio** via `Clock` injetável (não usar `now()` diretamente no core).
-* **Money/Quantity/Percentage** como VOs com regras explícitas (moeda, escala, arredondamento, comparações).
-
----
-
-## 6) Eventos (Domínio vs Integração)
-
-* **Domain Events:** fatos passados, imutáveis, com semântica; publicados pelo agregado; handlers idempotentes.
-* **Integration Events:** contratos externos; mapeados/adaptados na Application/Infra; não são o mesmo que Domain Events.
-* **Versionamento de eventos** previsto; tolerância a mudanças e compatibilidade retroativa quando possível.
-
----
-
-## 7) Validações, Specifications & Policies
-
-* **Validação sintática** no VO (ex.: formato de email, UUID, limites numéricos).
-* **Validação semântica** no agregado/serviço de domínio (ex.: limites de empréstimo, políticas de disponibilidade).
-* **Specifications/Policies** para compor regras reutilizáveis sem poluir entidades.
-* **Domain Exceptions** com semântica do negócio; não lançar erros técnicos no domínio.
-
----
-
-## 8) Serviços & Fábricas
-
-* **Factories** para criação de agregados complexos: objeto nasce válido ou falha explicitamente.
-* **Domain Services** somente quando a regra não “cabe” em entidade/VO; sem orquestração externa.
-* **Application Services** orquestram casos de uso, transações e integração; o domínio decide as regras.
-
----
-
-## 9) Repositórios, Leitura e Mapeamentos
-
-* **Repositórios retornam Agregados completos** (evitar partials que quebram invariantes).
-* **Consultas pesadas** e relatórios via modelos de leitura/projeções (CQRS opcional).
-* **Mapeamento ORM** isolado na Infra; evitar lazy‑loading que atravesse limites de agregado.
-
----
-
-## 10) Fronteiras, Bounded Contexts & ACL
-
-* **Bounded Contexts** com modelos próprios; sem “modelo corporativo único”.
-* **ACL (Anti‑Corruption Layer)** para integrar com legados ou outros contextos, com mapeamentos explícitos.
-* **Contratos externos** estáveis e versionados; compatibilidade tratada na borda.
-
----
-
-## 11) Consistência, Sagas/Process Managers
-
-* **Consistência eventual entre agregados** via eventos + outbox/retry.
-* **Sagas/Process Managers** para long‑running e coordenação cross‑agregado/contexto.
-* **Concorrência otimista** (versão) e **idempotência** em comandos/handlers.
-
----
-
-## 12) Organização & Modularidade
-
-* **Estratificação clara:** `Domain / Application / Infrastructure` com dependências unidirecionais.
-* **Pastas por Bounded Context**; dentro, por táticos (Entities, VOs, Repos, Events, Services, etc.).
-* **Ports** explícitas para serviços externos (Clock, Ids, Crypto, Bus, Email, Payments, Storage).
-
----
-
-## 13) Observabilidade, Segurança & Auditoria
-
-* **Logs/Tracing** na Application/Infra com `CorrelationId` (VO); o domínio não loga.
-* **AuthN/AuthZ** fora do domínio; quando necessário, expressar como políticas/decisões abstratas.
-* **Auditoria** como projeções/event sourcing ou trilhas de evento; não mesclar com regras de negócio.
-
----
-
-## 14) Qualidade & Testes
-
-* **Unit no domínio** (rápidos, sem infraestrutura), cobrindo invariantes e comportamentos.
-* **Contratos** para adapters/repositórios (test doubles vs impl real).
-* **E2E** para fluxos críticos; ferramentas de migração/esquema validadas.
-* **ADRs curtas** para registrar e revisar decisões.
-
----
-
-## 15) Versionamento & Evolução
-
-* **Evolução incremental** do modelo com refactors guiados por testes.
-* **Migrações de schema** compatíveis; janelas de transição planejadas.
-* **Versionamento de mensagens/eventos** com compatibilidade progressiva e depreciação controlada.
-
----
-
-## 16) Checklists por Camada (índice)
-
-* **16.1 Domain** — verificação de VOs, Entidades, Agregados, Eventos, Serviços de Domínio, Specifications/Policies, Exceptions, Invariantes.
-* **16.2 Application** — casos de uso, transações, orquestração, publicação/assinatura de eventos, mapeamentos entre Domain/Integration, validação de comandos, idempotência.
-* **16.3 Infrastructure** — repositórios concretos, ORM/mapeamentos, ACL/adapters, mensageria/outbox, observabilidade, configurações, segurança nas bordas.
-
----
-
-## 17) Glossário (sintético)
-
-* **Agregado:** conjunto coerente de entidades/VOs com invariantes e raiz única.
-* **Specification:** predicado reutilizável de regra de negócio.
-* **Policy:** regra/decisão que direciona comportamento do domínio.
-* **Outbox:** padrão para publicar eventos de forma confiável com a transação.
-* **ACL:** camada que protege o modelo de domínios externos/legados.
-
 ---
 
 ## 16.1 Checklist — Domain
@@ -511,3 +341,212 @@ Estabelecer decisões arquiteturais e normas táticas de DDD para alinhar lingua
 * [ ] Policies/Specifications compostas e puras; Domain Services criteriosos.
 * [ ] Nenhuma dependência de framework/ORM/IO no core.
 * [ ] Testes verdes e rápidos; ADRs/Glossário atualizados.
+
+---
+
+## 16.2 Checklist — Application
+
+> Objetivo: orquestrar casos de uso, transações e integração do domínio com o mundo externo, sem conter regra de negócio. **No nosso projeto, controllers/DTOs do Nest ficam na Infra**; aqui permanecem *apenas* casos de uso (services/interactors), orquestração, publ/consumo de eventos e mapeamentos entre Domain↔Integration.
+
+### 1) Casos de Uso (Use Cases)
+
+* ✅ Um caso de uso por intenção do usuário/sistema (imperativo: `LoanBook`, `RegisterUser`).
+* ✅ Orquestram entidades/serviços de domínio via portas; **não** decidem regra de negócio.
+* ✅ Entrada/saída **próprias da Application** (command/result) — distintas de DTOs HTTP (Infra).
+* ✅ Tratam idempotência/log/correlação **fora** do domínio (ex.: `CorrelationId`).
+
+### 2) Transações & Unidade de Trabalho
+
+* ✅ Delimitam fronteira transacional por **agregado** (preferência); coordenam múltiplos repositórios quando preciso.
+* ✅ Usam `UnitOfWork`/transacional do adapter (Infra) sem vazar detalhes para o domínio.
+* ✅ Regra: se precisa de consistência entre agregados, usar eventos + outbox (evitar 2PC).
+
+### 3) Validação de Comandos
+
+* ✅ **Syntactic**: formato/required/min/max/whitelists aqui (ou nos DTOs da Infra) — nunca no domínio.
+* ✅ **Semantic check**: delegar ao domínio (invariantes) ou *policies/specifications*.
+* ✅ Rejeições classificadas (erros de cliente vs falhas técnicas) com códigos/causas claros.
+
+### 4) Publicação/Assinatura de Eventos
+
+* ✅ **Domain Events** coletados durante a transação e publicados após commit (outbox).
+* ✅ **Integration Events** gerados a partir de eventos/estados do domínio por mapeadores dedicados.
+* ✅ Handlers de **Application** são idempotentes, tolerantes a reentrega e observáveis.
+
+### 5) Mapeamentos Domain ↔ Integration
+
+* ✅ Mappers dedicados convertem VOs/entidades para contratos externos (DTOs, Avro/JSON, etc.).
+* ✅ Versionamento de contratos considerado; campos opcionais/documentados.
+* ✅ Semântica preservada: nada de “string crua” quando há VO com regras.
+
+### 6) Idempotência & Resiliência
+
+* ✅ Idempotency‑Key por operação onde houver reentrega plausível.
+* ✅ Retries com backoff/jitter e circuit‑breaker aplicados via policies de infraestrutura.
+* ✅ Garantias explícitas: at‑least‑once vs at‑most‑once (documentadas por caso).
+
+### 7) Observabilidade (escopo da Application)
+
+* ✅ Correlação (CorrelationId/CausationId) e *structured logging* — sem poluir o domínio.
+* ✅ Métricas dos casos de uso (latência, throughput, falhas) e *trace spans* de orquestração.
+
+### 8) Anti‑patterns a evitar
+
+* ❌ Regras de negócio na Application.
+* ❌ DTOs HTTP dentro da Application (ficam na Infra).
+* ❌ Chamar adapters diretamente do domínio.
+
+### 9) Definition of Done — Application
+
+* [ ] Caso de uso orquestra portas do domínio sem lógica de negócio.
+* [ ] Transação clara; eventos publicados via outbox após commit.
+* [ ] Comandos validados (sintaxe aqui, semântica no domínio).
+* [ ] Mapeamentos Domain↔Integration versionados e testados.
+* [ ] Idempotência e observabilidade configuradas.
+
+---
+
+## 16.3 Checklist — Infrastructure
+
+> Objetivo: conectar o sistema ao mundo (HTTP, DB, filas, e‑mails, pagamentos, storage). Tudo que é **framework‑específico (NestJS)**, ORM, mensageria, configurações e segurança nas bordas fica aqui.
+
+### 1) Delivery Adapters (NestJS Controllers/Routes/DTOs)
+
+* ✅ Controllers, Pipes, Guards, Interceptors e DTOs **exclusivos da Infra**.
+* ✅ DTOs validam **sintaxe** e convertem para `commands` da Application.
+* ✅ Mapeamento de exceções de domínio → códigos HTTP/erros gRPC/MQ apropriados.
+
+### 2) Repositórios Concretos & ORM/ODM
+
+* ✅ Implementações de `Repository` (ports) do domínio com TypeORM/Prisma/etc.
+* ✅ **Mapeamentos** explícitos (Entity Mapping) e *no lazy crossing* de limites de agregado.
+* ✅ Unit of Work/transações; migrações versionadas; seeds controladas.
+* ✅ Cache pontual (read models) sem violar invariantes do agregado.
+
+### 3) Mensageria & Outbox
+
+* ✅ Producer/consumer para broker (Kafka, RabbitMQ, SQS, etc.) como adapters técnicos.
+* ✅ **Transactional outbox**/CDC para publicar eventos após commit.
+* ✅ Handlers técnicos garantem idempotência, *dead‑letter* e backoff.
+
+### 4) ACL (Anti‑Corruption Layer) & Integrações Externas
+
+* ✅ Adapters para APIs de terceiros com mapeamento semântico e *error handling* robusto.
+* ✅ Tolerância a versão/contratos; *fallbacks* e timeouts definidos.
+
+### 5) Configurações & Segredos
+
+* ✅ 12‑Factor: config via env/secret manager; nada hardcoded.
+* ✅ Rotação de segredos, *least privilege* (IAM/políticas minimalistas).
+
+### 6) Observabilidade & Operação
+
+* ✅ Logs estruturados, métricas (RED/USE), traces distribuídos.
+* ✅ Health checks, readiness/liveness, *graceful shutdown* e backpressure.
+* ✅ CorrelationId propagado (HTTP headers, message metadata).
+
+### 7) Segurança na Borda
+
+* ✅ AuthN/AuthZ nos adapters (JWT/OAuth/Keycloak etc.); autorização **não** embutida no domínio.
+* ✅ Validação de entrada (Pipes/DTOs), *rate limiting*, CORS, anti‑XSS/CSRF quando aplicável.
+
+### 8) Dados & Migrações
+
+* ✅ Migrações versionadas, *rollbacks* e *blue/green* quando crítico.
+* ✅ Políticas de retenção/anonimização (LGPD) e *data lineage* para read models.
+
+### 9) Definition of Done — Infrastructure
+
+* [ ] Controllers/DTOs convertem para comandos da Application (sem lógica de domínio).
+* [ ] Repositórios respeitam limites de agregado; transações e migrações em dia.
+* [ ] Outbox/mensageria com idempotência e DLQ.
+* [ ] Observabilidade e segurança implementadas.
+* [ ] Config/segredos e ACLs adequadas.
+
+### 10) Anti‑patterns a evitar
+
+* ❌ Domínio dependendo de adapters/concretudes.
+* ❌ “Gambiarra” bypassando Application (controller chamando repositório direto).
+* ❌ Lazy‑loading que quebra invariantes ou transações longas cruzando agregados.
+
+---
+
+## Apêndice — NestJS × DDD: Recomendações de Wire‑Up
+
+> Objetivo: usar o NestJS como **composition root** e camada de **Infra** (delivery + adapters), mantendo **Domain** e **Application** agnósticos de framework.
+
+### A.1 Princípios de Separação
+
+* **Domain**: regras de negócio puras, sem Nest/ORM/IO.
+* **Application**: orquestração de casos de uso, transação e publicação de eventos; continua sem Nest.
+* **Infrastructure (Nest)**: controllers/DTOs, repositórios concretos, UoW/transações, mensageria/outbox, ACL, observabilidade e segurança nas bordas.
+
+### A.2 Mapeamento de Artefatos Nest → Camadas DDD
+
+* **Controllers / Routes / Pipes / Guards / Interceptors / Filters** → *Infra* (Delivery adapters).
+* **DTOs (class‑validator/class‑transformer)** → *Infra* (validação sintática, mapeiam para Commands da Application).
+* **Providers concretos (ORM, broker, mail, storage)** → *Infra* (Adapters).
+* **Use Cases** → *Application* (providers simples, sem depender de Nest).
+* **Entities/VOs/Domain Services/Policies/Events** → *Domain*.
+
+### A.3 Composition Root (por Bounded Context)
+
+* Um **Module** Nest por contexto delimitado (ex.: `CatalogModule`, `CirculationModule`).
+* Cada Module **declara**: controllers (delivery), use cases (application), adapters concretos (infra), mappers e configuration providers.
+* Importação entre módulos apenas quando cruzar fronteiras explicitamente (ou preferir eventos/ACL).
+
+### A.4 Ports & Tokens
+
+* Defina **ports** (interfaces) no domínio: `Repository`, `IdGenerator`, `Clock`, `EventBus`, etc.
+* Na Infra, exponha **tokens**/**symbols** para *binding* (ex.: `TOKENS.BookRepository`).
+* **Factory Providers** fazem *wire‑up* de adapters concretos para as ports.
+
+### A.5 Transações & Unidade de Trabalho
+
+* UoW na **Infra**: abertura/commit/rollback próximos ao controller ou use case.
+* Preferir **escopo de requisição** (REQUEST‑scoped) quando a transação é por request.
+* **Outbox** (transacional/CDC) publica eventos **após** o commit; Application apenas sinaliza.
+
+### A.6 Eventos: Domain vs Integration
+
+* Agregado grava **Domain Events** durante a operação.
+* Application coleta e aciona publicação via **EventPublisher** (porta) → Infra mapeia para **Integration Events** e publica no broker.
+* Handlers técnicos (consumers) ficam na Infra; **handlers de negócio** (reagir a evento do mesmo domínio) podem residir na Application.
+
+### A.7 Controllers/DTOs & Exceções
+
+* Controllers convertem **DTO → Command** (Application) e **Result → DTO** (Infra).
+* **Exception filters** mapeiam *Domain Exceptions* para códigos HTTP/gRPC adequados (sem vazar detalhes técnicos).
+
+### A.8 Observabilidade, Segurança e Config
+
+* **ConfigModule/ENV** apenas na Infra; Domain/Application recebem *ports* já resolvidas.
+* Propagação de **CorrelationId/CausationId** via interceptors/headers/metadata.
+* AuthN/AuthZ nos adapters (guards); decisões de permissão no domínio apenas quando parte da regra.
+
+### A.9 Integrações Externas & ACL
+
+* Crie **adapters** com mapeamento semântico (ACL) para APIs/legados; trate versionamento e tolerância a falhas.
+* Timeouts, retries, circuit breakers configurados na Infra (políticas técnicas).
+
+### A.10 Testes
+
+* **Domain**: unit puros, determinísticos (sem Nest).
+* **Application**: unit com dublês das ports (sem Nest).
+* **Infrastructure**: integração/E2E com Nest, banco em container, broker, etc.
+
+### A.11 Anti‑patterns
+
+* ❌ Domain importando decorators/Providers Nest.
+* ❌ Controller chamando repositório direto (bypass da Application).
+* ❌ Lazy‑loading que cruza limites de agregado.
+* ❌ DTOs da Infra dentro da Application ou Domain.
+
+### A.12 Checklist de Wire‑Up
+
+* [ ] Use cases (Application) **sem** dependência de Nest.
+* [ ] Controllers/DTOs (Infra) convertendo para Commands/Results.
+* [ ] Ports definidas no domínio; adapters concretos *bound* por tokens na Infra.
+* [ ] UoW e Outbox implementados na Infra; publicação pós‑commit.
+* [ ] Mapeamento Domain→Integration events e observabilidade na borda.
+* [ ] Exception mapping consistente; segurança e config só na Infra.
